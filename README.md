@@ -11,7 +11,7 @@ Ensure that you only connect one hard drive to the raspberry pi, as on the first
 # Usage
 After cloning the project, you should configure some settings. Start by copying the example settings:
 ```
-cp config.example config
+cp -r config.example config
 ```
 
 Modify the settings in the config folder accordingly. Make sure to specify the `authorized_keys` and `unlock_authorized_keys`.
