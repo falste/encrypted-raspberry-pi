@@ -3,6 +3,8 @@ The goal of this project is to simplify setting up an encrypted raspberry pi tha
 
 The image is designed to be used exclusively via ssh and everything is set up accordingly.
 
+See also: https://github.com/ViRb3/pi-encrypted-boot-ssh
+
 # Warning
 Ensure that you only connect one hard drive to the raspberry pi, as on the first boot the partitions are modified.
 
