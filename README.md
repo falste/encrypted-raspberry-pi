@@ -29,7 +29,7 @@ sudo ./chroot.sh
 ```
 you can chroot into the decrypted system to inspect it.
 
-You can now flash the output image onto a medium of your choosing and connect it to the raspberry pi. You might need to enable usb booting for your raspberry pi.
+You can now flash the output image onto a medium of your choosing (with a command like `sudo dd bs=1M if=raspios_out.img of=/dev/sdX conv=fdatasync  status=progress`) and connect it to the raspberry pi. You might need to enable usb booting for your raspberry pi.
 
 Once started up, figure out your raspberry pis IP (through your router, for example) and connect to the `unlock_port` using an ssh key in the `unlock_authorized_keys`. Once connected, run the command `cryptroot-unlock` and enter the configured encryption password. The system will boot up fully and you will be able to connect via the normal ssh port (22) using an ssh key in the `authorized_keys`.
 

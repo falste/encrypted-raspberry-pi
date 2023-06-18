@@ -22,7 +22,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-passphrase=$(head -n 1 config/password)
+read -r -s -p "Enter decryption password: " decrypt_password && echo
 
 if [ ! -f "$img_target" ]; then
     echo "Can't find image $img_target"
@@ -31,7 +31,7 @@ fi
 
 kpartx -a "$img_target"
 dev_target=$(losetup | grep "$img_target" | sed -e 's/\/dev\/\(\w\+\) .*/\1/')
-cryptsetup luksOpen "/dev/mapper/${dev_target}p2" crypted <<< "$passphrase"
+cryptsetup luksOpen "/dev/mapper/${dev_target}p2" crypted <<< "$decrypt_password"
 mkdir -p /mnt/chroot
 mount /dev/mapper/crypted /mnt/chroot
 chroot /mnt/chroot

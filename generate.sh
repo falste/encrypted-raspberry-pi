@@ -32,8 +32,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
+read -r -s -p "Enter decryption password: " decrypt_password && echo
+read -r -s -p "Confirm password: " tmp && echo
+if [ "$decrypt_password" != "$tmp" ]; then
+    echo "Passwords don't match!" >&2 && exit -1
+fi
+read -r -s -p "Enter root user password: " root_password && echo
+read -r -s -p "Confirm password: " tmp && echo
+if [ "$root_password" != "$tmp" ]; then
+    echo "Passwords don't match!" >&2 && exit -1
+fi
+
 url=$(head -n 1 config/image_url)
-passphrase=$(head -n 1 config/password)
 unlock_port=$(head -n 1 config/unlock_port)
 
 printf "\n# Preparing images...\n"
@@ -63,8 +73,8 @@ mkdir -p /mnt/base
 mount /dev/mapper/${dev_base}p2 /mnt/base
 
 printf "\n# Creating encrypted partition...\n"
-cryptsetup --verbose --type=luks2 --cipher=xchacha12,aes-adiantum-plain64 --pbkdf-memory 512000 --pbkdf-parallel=1 --key-size=256 --hash=sha256 --iter-time=5000 --use-random luksFormat "/dev/mapper/${dev_target}p2" <<< "$passphrase"
-cryptsetup luksOpen "/dev/mapper/${dev_target}p2" crypted <<< "$passphrase"
+cryptsetup --verbose --type=luks2 --cipher=xchacha12,aes-adiantum-plain64 --pbkdf-memory 512000 --pbkdf-parallel=1 --key-size=256 --hash=sha256 --iter-time=5000 --use-random luksFormat "/dev/mapper/${dev_target}p2" <<< "$decrypt_password"
+cryptsetup luksOpen "/dev/mapper/${dev_target}p2" crypted <<< "$decrypt_password"
 
 mkfs.ext4 /dev/mapper/crypted
 
@@ -130,19 +140,16 @@ chroot /mnt/chroot /bin/bash -c "sed -i 's/^main$/fix_wpa;regenerate_ssh_host_ke
 chroot /mnt/chroot /bin/bash -c "echo \"pi:\$6\$Gpq1Y5a26F7cPIuL\$VeIz04vCAZFE6RfFnH.BInFyiHp.pylFKzLYoVfDav1dCYAeUJqISZngIaQNcdr1SJfJWXbmBk7DftioULVYW0\" > /boot/userconf.txt"
 
 chroot /mnt/chroot /bin/bash -c "mkdir -p /etc/dropbear"
-chroot /mnt/chroot /bin/bash -c "echo 'DROPBEAR_OPTIONS\"-p $unlock_port\"' > /etc/dropbear/dropbear.conf"
-
-chroot /mnt/chroot /bin/bash -c "sed -i 's/$/ \/resize\.sh/' /boot/cmdline.txt"
+chroot /mnt/chroot /bin/bash -c "echo 'DROPBEAR_OPTIONS=\"-p $unlock_port\"' > /etc/dropbear/dropbear.conf"
 
 chroot /mnt/chroot /bin/bash -c "mv /etc/resolv.conf.bak /etc/resolv.conf"
 
-# Set root password
-echo "root:${passphrase}" | chroot /mnt/chroot chpasswd
+echo "root:${root_password}" | chroot /mnt/chroot chpasswd
 
-printf "\n# Copying system files...\n"
 cp -rn system_files/* /mnt/chroot
+chroot /mnt/chroot /bin/bash -c "systemctl enable resize.service"
 
-printf "\n# Copying custom files...\n"
+
 cp -rn custom_files/* /mnt/chroot
 
 chroot /mnt/chroot /bin/bash -c "sync && history -c"

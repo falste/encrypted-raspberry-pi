@@ -1,0 +1,8 @@
+[Unit]
+Description=Resizes the file system on the first boot
+
+[Service]
+ExecStart=/bin/bash /boot/resize.sh
+
+[Install]
+WantedBy=default.target
