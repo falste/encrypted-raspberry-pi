@@ -42,6 +42,7 @@ On first bootup, the system will reboot to increase the partitions size to 100%.
 * Ensure you find another way to grow the partition/file system
 
 # TODO
+* resize mechanism doesn't seem to work out of the box, needs to be rerun
 * Dockerize the image generation to make use of dockers caching as well as the more reliable build environment
 * Enter password manually instead of reading it from file
 * Separate the decryption password from the user password
