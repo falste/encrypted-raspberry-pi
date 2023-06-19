@@ -37,7 +37,7 @@ Once started up, figure out your raspberry pis IP (through your router, for exam
 On first bootup, the system will reboot to increase the partitions size to 100%. You will therefore have to unlock the system multiple times.
 
 # Adapting for systems other than the raspberry pi
-* Remove the command `touch /boot/ssh`
+* Remove the file `/boot/ssh` from the system_files
 * Check that the resize mechanism still works with your system
 * Remove the modifications to /boot/cmdline.txt
 
