@@ -35,12 +35,6 @@ Once started up, figure out your raspberry pis IP (through your router, for exam
 
 On first bootup, the system will reboot to increase the partitions size to 100%. You will therefore have to unlock the system multiple times.
 
-# Adapting for systems other than the raspberry pi
-* Remove the command `touch /boot/ssh`
-* Remove `resize.sh` from system_files
-* Remove the modifications to /boot/cmdline.txt
-* Ensure you find another way to grow the partition/file system
-
 # TODO
 * Dockerize the image generation to make use of dockers caching as well as the more reliable build environment
 * Enter password manually instead of reading it from file
