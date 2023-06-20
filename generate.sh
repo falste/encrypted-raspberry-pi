@@ -107,7 +107,7 @@ chroot /mnt/chroot /bin/bash -c "apt install -y busybox cryptsetup dropbear-init
 
 chroot /mnt/chroot /bin/bash -c "mkdir -p /root/.ssh"
 cp -n config/unlock_authorized_keys /mnt/chroot/etc/dropbear-initramfs/authorized_keys
-cp -n config/authorized_keys /mnt/chroot/root/.ssh/authorized_keys
+cp -n config/authorized_keys /mnt/chroot/home/pi/.ssh/authorized_keys
 
 chroot /mnt/chroot /bin/bash -c "sed -E -i 's@.*/\s+ext4.*@/dev/mapper/crypted   / ext4 defaults,noatime          0 1@' /etc/fstab"
 uuid=$(chroot /mnt/chroot /bin/bash -c "blkid | grep crypto_LUKS | grep -oP \" UUID=\\\"\K[^\\\"]+\"")
