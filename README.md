@@ -8,7 +8,7 @@ See also: https://github.com/ViRb3/pi-encrypted-boot-ssh
 # Warning
 Ensure that you only connect one hard drive to the raspberry pi, as on the first boot the partitions are modified.
 
-# Usage
+# Setup
 After cloning the project, you should configure some settings. Start by copying the example settings:
 ```
 cp -r config.example config
@@ -31,11 +31,11 @@ you can chroot into the decrypted system to inspect it.
 
 You can now flash the output image onto a medium of your choosing (with a command like `sudo dd bs=1M if=raspios_out.img of=/dev/sdX conv=fdatasync  status=progress`) and connect it to the raspberry pi. You might need to enable usb booting for your raspberry pi.
 
+# Usage
 Once started up, figure out your raspberry pis IP (through your router, for example) and connect to the `unlock_port` using an ssh key in the `unlock_authorized_keys`. Once connected, run the command `cryptroot-unlock` and enter the configured encryption password. The system will boot up fully and you will be able to connect via the normal ssh port (22) using an ssh key in the `authorized_keys`.
 
 On first bootup, the system will reboot to increase the partitions size to 100%. You will therefore have to unlock the system multiple times.
 
 # TODO
+* resize mechanism doesn't seem to work out of the box, needs to be rerun
 * Dockerize the image generation to make use of dockers caching as well as the more reliable build environment
-* Enter password manually instead of reading it from file
-* Separate the decryption password from the user password
