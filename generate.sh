@@ -105,7 +105,7 @@ chroot /mnt/chroot /bin/bash -c "apt update && apt autoremove"
 chroot /mnt/chroot /bin/bash -c "apt upgrade -y"
 chroot /mnt/chroot /bin/bash -c "apt install -y busybox cryptsetup dropbear-initramfs"
 
-chroot /mnt/chroot /bin/bash -c "mkdir -p /root/.ssh"
+chroot /mnt/chroot /bin/bash -c "mkdir -p /home/pi/.ssh"
 cp -n config/unlock_authorized_keys /mnt/chroot/etc/dropbear-initramfs/authorized_keys
 cp -n config/authorized_keys /mnt/chroot/home/pi/.ssh/authorized_keys
 
@@ -140,17 +140,18 @@ chroot /mnt/chroot /bin/bash -c "sed -i 's/^main$/fix_wpa;regenerate_ssh_host_ke
 chroot /mnt/chroot /bin/bash -c "echo \"pi:\$6\$Gpq1Y5a26F7cPIuL\$VeIz04vCAZFE6RfFnH.BInFyiHp.pylFKzLYoVfDav1dCYAeUJqISZngIaQNcdr1SJfJWXbmBk7DftioULVYW0\" > /boot/userconf.txt"
 
 chroot /mnt/chroot /bin/bash -c "mkdir -p /etc/dropbear"
-chroot /mnt/chroot /bin/bash -c "echo 'DROPBEAR_OPTIONS=\"-p $unlock_port\"' > /etc/dropbear/dropbear.conf"
+chroot /mnt/chroot /bin/bash -c "echo 'DROPBEAR_OPTIONS=\"-p $unlock_port\"' > /etc/dropbear-initramfs/config"
 chroot /mnt/chroot /bin/bash -c "update-initramfs -u"
 
-chroot /mnt/chroot /bin/bash -c "mv /etc/resolv.conf.bak /etc/resolv.conf"
 
 echo "root:${root_password}" | chroot /mnt/chroot chpasswd
 
 cp -rn system_files/* /mnt/chroot
-chroot /mnt/chroot /bin/bash -c "systemctl enable resize.service"
-
-
 cp -rn custom_files/* /mnt/chroot
+cp -n custom_script.sh /mnt/chroot
+chroot /mnt/chroot /bin/bash -c "chmod +x /custom_script.sh"
+chroot /mnt/chroot /bin/bash -c "/custom_script.sh"
+chroot /mnt/chroot /bin/bash -c "rm /custom_script.sh"
 
+chroot /mnt/chroot /bin/bash -c "mv /etc/resolv.conf.bak /etc/resolv.conf"
 chroot /mnt/chroot /bin/bash -c "sync && history -c"
