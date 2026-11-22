@@ -5,8 +5,8 @@
 # Raspberry Pi OS Lite (64-bit) image to build from. Pick a release from
 # https://downloads.raspberrypi.com/raspios_lite_arm64/images/ and copy the
 # .img.xz URL plus the checksum from the .sha256 file next to it.
-IMAGE_URL=""
-IMAGE_SHA256=""
+IMAGE_URL="https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2026-10-06/2026-10-06-raspios-trixie-arm64-lite.img.xz"
+IMAGE_SHA256="483db18a48da399b5b7022ffae9a07bc6d99daab30e593aedac09b69ff422843"
 
 # Name of the Pi on the network.
 PI_HOSTNAME="raspberrypi"
