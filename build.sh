@@ -79,7 +79,7 @@ done
 check_keys SSH_AUTHORIZED_KEYS "${SSH_AUTHORIZED_KEYS:-}"
 check_keys UNLOCK_AUTHORIZED_KEYS "${UNLOCK_AUTHORIZED_KEYS:-}"
 
-for tool in cryptsetup losetup sfdisk mkfs.ext4 rsync xz curl sha256sum chroot findmnt mountpoint udevadm; do
+for tool in cryptsetup losetup sfdisk rsync xz curl sha256sum chroot findmnt mountpoint udevadm; do
     command -v "$tool" >/dev/null || die "Missing tool on this machine: $tool"
 done
 
@@ -113,7 +113,9 @@ cleanup() {
     if mountpoint -q "$ROOT_MNT"; then
         umount -R "$ROOT_MNT" || umount -R -l "$ROOT_MNT"
     fi
-    mountpoint -q "$BASE_MNT" && umount "$BASE_MNT"
+    if mountpoint -q "$BASE_MNT"; then
+        umount -R "$BASE_MNT" || umount -R -l "$BASE_MNT"
+    fi
     [ "$LUKS_OPENED" = yes ] && cryptsetup close "$BUILD_MAPPER"
     [ -n "$TARGET_LOOP" ] && losetup -d "$TARGET_LOOP"
     [ -n "$BASE_LOOP" ] && losetup -d "$BASE_LOOP"
@@ -195,10 +197,15 @@ printf '%s' "$PASSWORD" | cryptsetup open --key-file=- "${TARGET_LOOP}p2" "$BUIL
 LUKS_OPENED=yes
 LUKS_UUID=$(cryptsetup luksUUID "${TARGET_LOOP}p2")
 
-# Use the image's own mkfs defaults, so a newer build machine can't enable
-# file system features the Pi's fsck doesn't know yet.
+# Create the file system with the image's own mkfs, so it matches the Pi's
+# tools no matter how old or new the build machine's are.
 mount -o ro "${BASE_LOOP}p2" "$BASE_MNT"
-MKE2FS_CONFIG="$BASE_MNT/etc/mke2fs.conf" mkfs.ext4 -q -L rootfs "/dev/mapper/$BUILD_MAPPER"
+mount --bind /dev "$BASE_MNT/dev"
+mount --make-rslave "$BASE_MNT/dev"
+mount -t proc proc "$BASE_MNT/proc"
+chroot "$BASE_MNT" /usr/bin/env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin \
+    mkfs.ext4 -q -L rootfs "/dev/mapper/$BUILD_MAPPER"
+umount "$BASE_MNT/proc" "$BASE_MNT/dev"
 
 log "Copying root file system"
 mount "/dev/mapper/$BUILD_MAPPER" "$ROOT_MNT"
