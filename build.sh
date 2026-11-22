@@ -449,7 +449,10 @@ check_initrd "*/.ssh/authorized_keys" "unlock keys missing"
 grep -q -- "-p $UNLOCK_PORT " "$INITRD_DIR/etc/dropbear/dropbear.conf" || die "initramfs: dropbear config missing"
 grep -q '^TIMEOUT=60$' "$INITRD_DIR/bin/cryptroot-unlock" 2>/dev/null ||
     grep -q '^TIMEOUT=60$' "$INITRD_DIR/usr/bin/cryptroot-unlock" || die "initramfs: cryptroot-unlock timeout not set"
-check_initrd "etc/boottime.kmap.gz" "keyboard layout missing"
+# The keymap hook copies the compiled layout plus a small setupcon that loads it.
+check_initrd "*console-setup/*.kmap" "keyboard layout missing"
+grep -q loadkeys "$INITRD_DIR/bin/setupcon" 2>/dev/null ||
+    grep -q loadkeys "$INITRD_DIR/usr/bin/setupcon" || die "initramfs: keyboard layout is not loaded at boot"
 check_initrd "scripts/init-premount/encrypted-pi-grow-partition" "partition grow script missing"
 check_initrd "*sbin/sfdisk" "sfdisk missing"
 rm -rf "$R/tmp/initrd"
