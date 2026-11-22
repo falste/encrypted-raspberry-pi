@@ -1,0 +1,11 @@
+[Unit]
+Description=Grow root file system to fill the encrypted root partition
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/encrypted-pi-grow-root
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,29 @@
+#!/bin/sh
+# Adjustments to the initramfs for encrypted-raspberry-pi.
+PREREQ="cryptroot-unlock"
+
+prereqs() {
+    echo "$PREREQ"
+}
+
+case "$1" in
+    prereqs)
+        prereqs
+        exit 0
+        ;;
+esac
+
+. /usr/share/initramfs-tools/hook-functions
+
+# cryptroot-unlock gives up after 10 seconds, but deriving the key (Argon2)
+# can take longer on a Pi. Patch only the copy inside the initramfs, so
+# package updates can't undo it.
+if [ -f "$DESTDIR/bin/cryptroot-unlock" ]; then
+    sed -i 's/^TIMEOUT=.*/TIMEOUT=60/' "$DESTDIR/bin/cryptroot-unlock"
+fi
+
+# Raspberry Pi kernel modules are xz-compressed.
+copy_exec /usr/bin/xz /bin
+
+# For scripts/init-premount/encrypted-pi-grow-partition
+copy_exec /usr/sbin/sfdisk /sbin

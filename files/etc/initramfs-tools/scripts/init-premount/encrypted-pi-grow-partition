@@ -1,0 +1,54 @@
+#!/bin/sh
+# Grows the encrypted root partition to the end of the disk before it is
+# unlocked (while nothing uses it). LUKS2 then maps the whole partition when
+# it's opened, and encrypted-pi-grow-root.service grows the file system after
+# boot. Does nothing if the partition already fills the disk.
+PREREQ="udev"
+
+prereqs() {
+    echo "$PREREQ"
+}
+
+case "$1" in
+    prereqs)
+        prereqs
+        exit 0
+        ;;
+esac
+
+. /scripts/functions
+
+uuid=$(sed -n 's/^[^ ]* UUID=\([^ ]*\) .*/\1/p' /cryptroot/crypttab 2>/dev/null | head -n 1)
+[ -n "$uuid" ] || exit 0
+
+# Wait up to 30 seconds for the disk (USB disks take a moment to show up).
+tries=0
+while [ ! -e "/dev/disk/by-uuid/$uuid" ]; do
+    tries=$((tries + 1))
+    if [ "$tries" -gt 300 ]; then
+        log_warning_msg "encrypted-pi: root partition not found, not growing it"
+        exit 0
+    fi
+    usleep 100000
+done
+
+part=$(readlink -f "/dev/disk/by-uuid/$uuid")
+part_name=${part##*/}
+part_sys=/sys/class/block/$part_name
+[ -f "$part_sys/partition" ] || exit 0
+disk_name=$(basename "$(dirname "$(readlink -f "$part_sys")")")
+part_num=$(cat "$part_sys/partition")
+part_end=$(( $(cat "$part_sys/start") + $(cat "$part_sys/size") ))
+disk_size=$(cat "/sys/class/block/$disk_name/size")
+
+# Less than 1 MiB unused at the end: nothing to do.
+[ $((disk_size - part_end)) -ge 2048 ] || exit 0
+
+log_begin_msg "Growing root partition /dev/$part_name to the end of /dev/$disk_name"
+if echo ', +' | sfdisk --quiet --wipe never --wipe-partitions never -N "$part_num" "/dev/$disk_name"; then
+    udevadm settle
+    log_end_msg
+else
+    log_warning_msg "encrypted-pi: growing the root partition failed"
+fi
+exit 0

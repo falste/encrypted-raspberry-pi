@@ -1,0 +1,9 @@
+#!/bin/sh
+# Grows the root file system to fill the decrypted root device. The partition
+# itself is grown in the initramfs before unlocking (scripts/init-premount/
+# encrypted-pi-grow-partition), and LUKS2 maps the whole partition when it is
+# opened, so only the file system is left. Does nothing if there's nothing to
+# grow.
+set -eu
+
+resize2fs "$(findmnt -no SOURCE /)"

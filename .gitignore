@@ -1,2 +1,5 @@
-raspios_*.img
-config
+config.sh
+cache/
+work/
+*.img
+*.img.partial
