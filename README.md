@@ -1,50 +1,116 @@
-# Purpose
-The goal of this project is to simplify setting up an encrypted raspberry pi that can be unlocked via ssh. This project generates an easy to use image with an initramfs running dropbear for unlocking, as well as an encrypted partition containing the normal raspberry pi file system.
+# Encrypted Raspberry Pi
 
-The image is designed to be used exclusively via ssh and everything is set up accordingly.
+Builds a ready-to-flash Raspberry Pi OS Lite (64-bit) image whose root partition
+is encrypted with LUKS2. At boot you unlock it either over SSH (dropbear in the
+initramfs asks for the passphrase straight away) or with a keyboard attached to
+the Pi. Configure once, build, flash, boot, unlock, log in. No setup steps on
+the Pi.
 
-See also: https://github.com/ViRb3/pi-encrypted-boot-ssh
+Made for a headless Raspberry Pi 4 booting from a USB SSD over Ethernet.
 
-# Setup
-After cloning the project, you should configure some settings. Start by copying the example settings:
+The previous version (Raspberry Pi OS Bullseye) is available as tag [`v1`](../../tree/v1).
+
+## What you get
+
+- Root partition encrypted with LUKS2, Adiantum cipher (fast on CPUs without
+  AES instructions, like the Pi 4), Argon2id key derivation.
+- One password for the disk, the user and root, asked once during the build.
+- Unlocking over SSH on a separate port: connecting shows the passphrase prompt
+  immediately. The unlock server allows nothing else (no shell, no forwarding,
+  no password logins).
+- Unlocking with a local keyboard, using your keyboard layout.
+- The partition, LUKS container and file system grow to fill the disk on first
+  boot without a reboot.
+- User with passwordless sudo and your SSH keys; password login over SSH also
+  allowed; root can only log in locally.
+- Automatic security updates (no automatic reboots), persistent journal capped
+  at 500 MB, optional TRIM, Wi-Fi and Bluetooth turned off, cloud-init and the
+  first-boot user wizard disabled.
+
+## Requirements
+
+A Linux machine to build on, with `cryptsetup`, `rsync`, `xz`, `curl` and
+`sfdisk` (package `fdisk`). Building on a 64-bit Raspberry Pi OS is easiest. On
+x86 machines you additionally need `qemu-user-static` with binfmt support to run
+the Pi's programs.
+
+The build needs about 10 GB of free space.
+
+## Build
+
+```sh
+cp config.example.sh config.sh
 ```
-cp -r config.example config
+
+Edit `config.sh`: the base image URL and checksum, your SSH public keys, and
+anything else you want to change. Then:
+
+```sh
+sudo ./build.sh
 ```
 
-Modify the settings in the config folder accordingly. Make sure to specify the `authorized_keys` and `unlock_authorized_keys`. The keys in `authorized_keys` are used to log in into the `pi` user. The keys in `unlock_authorized_keys` are used for unlocking. The keys can be the same.
+You're asked for the password once at the start; the rest runs unattended. At
+the end the script checks that the boot partition contains a fresh initramfs
+with everything needed to unlock (crypttab entry, dropbear, keys, keyboard
+layout). If any of that is missing, the build fails instead of producing an
+image you can't unlock.
 
-Optionally, you can move files to custom_files, which will then be included in the image. For example a file in custom_files/home/pi/test.txt will end up in the respective location. Additionally, you can add things to the custom_script.sh that will be executed on the target system once.
+## Flash and boot
 
-Once configured, generate the image by running
-```
-sudo ./generate.sh
-```
-A few warnings are to be expected.
+Write the image to the SSD (replace `/dev/sdX`; double-check it's the right disk):
 
-Using
-```
-sudo ./chroot.sh
-```
-you can chroot into the decrypted system to inspect it.
-
-You can now flash the output image onto a medium of your choosing (with a command like `sudo dd bs=1M if=raspios_out.img of=/dev/sdX conv=fdatasync  status=progress`) and connect it to the raspberry pi. You might need to enable usb booting for your raspberry pi.
-
-# Usage
-Once started up, figure out your raspberry pis IP (through your router, for example) and connect to the `unlock_port` using an ssh key in the `unlock_authorized_keys`. Once connected, run the command `cryptroot-unlock` and enter the configured encryption password. The system will boot up fully and you will be able to connect via the normal ssh port (22) using an ssh key in the `authorized_keys`.
-
-On the first boot, you will need to unlock the system twice, as it reboots. You should also expand the encrypted partition and file system:
-```
-# find the drive containing the encrypted partition using:
-lsblk
-
-parted /dev/sdX --script resizepart2 100%
-# there might be a reboot needed here
-resize2fs /dev/mapper/crypted
-# there might be a reboot needed here
+```sh
+sudo dd if=raspios-encrypted.img of=/dev/sdX bs=4M conv=fsync status=progress
 ```
 
-The password of user pi is automatically removed. Feel free to change it or just use an encrypted key.
+Raspberry Pi Imager also works ("Use custom" image). Don't use its OS
+customisation settings, since they would conflict with this setup.
 
-# TODO
-* Automate resizing on first boot
-* Dockerize the image generation to make use of dockers caching as well as the more reliable build environment
+Connect the SSD and Ethernet and power on the Pi. The Pi gets its address via
+DHCP. Reserving a fixed address for it in your router is easiest, since you
+need to know the address before the Pi has fully booted.
+
+## Unlock and log in
+
+```sh
+ssh -p 2222 root@<pi-address>   # asks for the passphrase, then disconnects
+ssh pi@<pi-address>             # the running system
+```
+
+Or type the passphrase on a keyboard attached to the Pi.
+
+The unlock server has its own host key, which is different from the running
+system's. Since it uses a different port, SSH stores them separately and won't
+complain. The build prints the unlock server's fingerprints.
+
+## Recovery
+
+`chroot.sh` opens an image or a disk, mounts it and gives you a shell inside,
+for example to inspect a built image or to repair the Pi's SSD from another
+Linux machine:
+
+```sh
+sudo ./chroot.sh raspios-encrypted.img
+sudo ./chroot.sh /dev/sdX
+```
+
+Recommended after the first boot (on the Pi):
+
+- Back up the LUKS header, which holds the encrypted key; if it gets damaged the
+  data is lost, even with the right passphrase. Store the file off the Pi:
+  `sudo cryptsetup luksHeaderBackup /dev/sda2 --header-backup-file pi-luks-header.img`
+- Keep a copy of the unlock SSH key somewhere other than your PC (e.g. your
+  password manager). Without it you can only unlock with a local keyboard.
+
+## Notes
+
+- **TRIM** only works if the USB-SATA adapter supports it. Check with
+  `lsblk --discard`: non-zero `DISC-GRAN`/`DISC-MAX` for the disk means it does.
+  Some adapters need a udev rule setting `provisioning_mode` to `unmap`.
+- **Changing unlock settings later** (keys, port): edit the files in
+  `/etc/dropbear/initramfs/` on the Pi, then run `sudo update-initramfs -u -k all`.
+- **Changing the password**: the disk passphrase and the login passwords are
+  separate. For the disk: `sudo cryptsetup luksChangeKey /dev/sda2`. For the
+  users: `passwd` and `sudo passwd root`.
+- Unlocking takes a few seconds; the key derivation is deliberately slow to
+  make guessing the passphrase expensive.
